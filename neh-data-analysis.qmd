@@ -1,0 +1,19 @@
+---
+title: "NEH Grants Data Analysis"
+author: "Brian A. Danielak"
+format: html
+editor: visual
+---
+
+# Loading and Cleaning the Data
+
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+
+grants_2008_2009 <- read.csv(
+  "data-raw/NEH_Grants2000s.csv", 
+  header = FALSE
+)
+```
