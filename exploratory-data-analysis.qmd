@@ -133,9 +133,54 @@ grants_2000s |>
   filter(Duration <= 2000) |> 
   ggplot() +
   geom_histogram(aes(x = Duration), binwidth = 20) +
-  geom_vline(xintercept = 365, color = "red", show.legend = TRUE) +
+  geom_vline(xintercept = 365, color = "red", alpha = 0.5) +
   xlab("Duration (Days)") + 
   ylab("Count")
 ```
 
 Perhaps unsurprisingly, the most common award duration is 365 days (line shown in red), or one year.
+
+## Comparing Grant Duration to Total Amount Granted
+
+Is there a relationship between how long a grant lasts and how much money is granted?
+
+```{r}
+grants_2000s |> 
+  mutate(
+    TotalAmount = AwardOutright + AwardMatching,
+    Duration = EndGrant - BeginGrant
+  ) |> 
+  ggplot() +
+  geom_point(aes(Duration, TotalAmount), alpha = 0.2) + 
+  labs(
+    x = "Duration (days)",
+    y = "Total Amount"
+  )
+```
+
+There's an interesting vertical band just past 1750 days, where grants of the same duration have fairly different funding amounts.
+Let's explore that.
+
+```{r}
+grants_2000s |> 
+  mutate(
+    TotalAmount = AwardOutright + AwardMatching,
+    Duration = EndGrant - BeginGrant
+  ) |> 
+  filter(Duration >= 1500 & Duration <= 2000) |> 
+  ggplot() +
+  geom_point(aes(Duration, TotalAmount), alpha = 0.2) + 
+  geom_vline(xintercept = 1825, color = "red", alpha = 0.5)
+  labs(
+    x = "Duration (days)",
+    y = "Total Amount"
+  )
+```
+
+👆 This graph shows us the wide variation in funding for grants that last approximately 5 years.
+
+## How much money is going to "unaffiliated independent scholars?"
+
+## What happens when we break down the discipline category by splitting on semicolons?
+
+We can use `DisciplineCount` to determine how many fields to split the Discipline into.
