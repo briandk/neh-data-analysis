@@ -11,40 +11,37 @@ editor: visual
 #| echo: false
 #| message: false
 library(tidyverse)
+library(vroom)
 library(xml2)
 
 load_grants_from_raw_xml <- function(path_to_xml) {
   
+  # First, we check if the rectangularized file already exists.
+  if (file.exists("data-cleaned/grants-data-cleaned.tsv")) {
+    
+    # If it exists, we load it and return it
+    grants_cleaned <- vroom::vroom("data-cleaned/grants-data-cleaned.tsv")
+    return(grants_cleaned)
+  
+  # Otherwise, we do the expensive thing
+  } else {
+      grants_raw <- xml2::read_xml(path_to_xml) |> 
+        xml2::as_list()
+      
+      grants_tibble <- grants_raw$Grants |> 
+        lapply(unlist) |> 
+        dplyr::bind_rows()
+  
+      # Write the file out so we can load it next time
+      grants_tibble |> 
+        dplyr::transmute_all(unlist) |> 
+        vroom::vroom_write("data-cleaned/grants-data-cleaned.tsv")
+      
+      # Load the file (vroom will help infer column types automatically on load)
+      grants_cleaned <- vroom::vroom("data-cleaned/grants-data-cleaned.tsv") 
+      return(grants_cleaned)
+  }
 }
 
-grants_raw <- xml2::read_xml("data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml") |> 
-  xml2::as_list()
-
-grants_cleaned <- NULL
-
-for (grant in grants_raw$Grants) {
-  grants_cleaned <- dplyr::bind_rows(grants_cleaned, grant)
-}
-
-# grants_cleaned <- grants_raw$Grants |> 
-#   head(n = 1000) |> 
-#   dplyr::bind_rows() |>
-#   dplyr::transmute_all(unlist) |> 
-#   vroom::vroom_write("data-cleaning/grants-2000s.tsv")
-
-
-# grants_head <- grants_2000s$Grants  |> 
-#   head(n = 2) |> 
-#   dplyr::bind_rows()
-
-# grants_head |>
-#   transmute_all(unlist)
-
-
-```
-
-```{r}
-x <- NULL
-
-x |> head(n = 10)
+grants_2000s <- load_grants_from_raw_xml("data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml")
 ```
