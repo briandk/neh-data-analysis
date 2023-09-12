@@ -183,4 +183,6 @@ grants_2000s |>
 
 ## What happens when we break down the discipline category by splitting on semicolons?
 
+## What's the mean funding amount by state? (Sort descending)
+
 We can use `DisciplineCount` to determine how many fields to split the Discipline into.
