@@ -7,13 +7,19 @@ editor: visual
 
 # Loading and Cleaning the Data
 
+## Loading Necessary Libraries
+
 ```{r}
 #| echo: false
 #| message: false
 library(tidyverse)
 library(vroom)
 library(xml2)
+```
 
+## Loading Grant Data from Downloaded XML
+
+```{r}
 load_grants_from_raw_xml <- function(path_to_xml) {
   
   # First, we check if the rectangularized file already exists.
@@ -43,5 +49,6 @@ load_grants_from_raw_xml <- function(path_to_xml) {
   }
 }
 
+# I downloaded and unzipped the 2000s grant data
 grants_2000s <- load_grants_from_raw_xml("data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml")
 ```
