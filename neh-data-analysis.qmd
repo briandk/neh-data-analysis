@@ -12,8 +12,8 @@ editor: visual
 ## Loading Necessary Libraries
 
 ```{r}
-#| echo: false
-#| message: false
+# #| echo: false
+# #| message: false
 library(tidyverse)
 library(forcats)
 library(vroom)
@@ -73,12 +73,29 @@ grants_2000s |>
   arrange(desc(n))
 ```
 
-What happens if we combine the Original Amount of the grant with the Supplement Count?
-Then we can ask how much total money is being spent by program.
+What happens if we combine the Award Outright with the Award Matching to get a sense of the total distribution of award amounts?
 
 ```{r}
 grants_2000s |> 
-  mutate(TotalAmount = OriginalAmount + SupplementAmount) |> 
+  mutate(TotalAmount = AwardOutright + AwardMatching) |> 
+  ggplot() +
+  geom_histogram(aes(x = TotalAmount))
   
   
 ```
+
+Hmm, that's strange.
+It looks like we have a skewed distribution with a long right tail.
+The histogram suggests there may be just a few awards totaling \$4,000,000 or more.
+Let's look at how many awards exceed \$1,000,000.
+
+```{r}
+exceed_1_million_in_funding <- grants_2000s |> 
+  mutate(TotalAmount = AwardOutright + AwardMatching) |> 
+  filter(TotalAmount > 1e6)
+
+dim(exceed_1_million_in_funding)[1]
+```
+
+Looks like there are 179 projects that exceed \$1 million in funding.
+What happens if we look at *their* distribution?
