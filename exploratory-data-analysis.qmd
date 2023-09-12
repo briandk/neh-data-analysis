@@ -32,7 +32,7 @@ load_grants_from_raw_xml <- function(path_to_xml) {
     grants_cleaned <- vroom::vroom("data-cleaned/grants-data-cleaned.tsv")
     return(grants_cleaned)
   
-  # Otherwise, we do the expensive thing
+  # Otherwise, we do the expensive thing and load it from XML
   } else {
       grants_raw <- xml2::read_xml(path_to_xml) |> 
         xml2::as_list()
@@ -41,22 +41,23 @@ load_grants_from_raw_xml <- function(path_to_xml) {
         lapply(unlist) |> 
         dplyr::bind_rows()
   
-      # Write the file out so we can load it next time
+      # Write the rectangularized data out so we can load *it* next time
       grants_tibble |> 
         dplyr::transmute_all(unlist) |> 
         vroom::vroom_write("data-cleaned/grants-data-cleaned.tsv")
       
-      # Load the file (vroom will help infer column types automatically on load)
+      # Load the data from file (vroom will help infer column types automatically on load)
       grants_cleaned <- vroom::vroom("data-cleaned/grants-data-cleaned.tsv") 
       return(grants_cleaned)
   }
 }
 
 # I downloaded and unzipped the 2000s grant data
+# https://securegrants.neh.gov/open/data/NEH_Grants2000s_Flat.zip
 grants_2000s <- load_grants_from_raw_xml("data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml")
 ```
 
-# Inspecting the Data
+# Exploratory Data Analysis
 
 First, let's get an idea of what the data looks like.
 
@@ -73,6 +74,8 @@ grants_2000s |>
   arrange(desc(n))
 ```
 
+## Visualizing the Distribution of Total Amounts
+
 What happens if we combine the Award Outright with the Award Matching to get a sense of the total distribution of award amounts?
 
 ```{r}
@@ -80,9 +83,9 @@ grants_2000s |>
   mutate(TotalAmount = AwardOutright + AwardMatching) |> 
   ggplot() +
   geom_histogram(aes(x = TotalAmount))
-  
-  
 ```
+
+## 
 
 Hmm, that's strange.
 It looks like we have a skewed distribution with a long right tail.
@@ -99,3 +102,40 @@ dim(exceed_1_million_in_funding)[1]
 
 Looks like there are 179 projects that exceed \$1 million in funding.
 What happens if we look at *their* distribution?
+
+```{r}
+exceed_1_million_in_funding |> 
+  ggplot() + 
+  geom_histogram(aes(x = TotalAmount))
+```
+
+There seems to be a cluster of about 40 projects whose total funding falls at around \$1.5 million.
+
+## Exploring Grant Duration
+
+How long do grants typically last?
+
+```{r}
+grants_2000s |> 
+  mutate(Duration = EndGrant - BeginGrant) |> 
+  ggplot() +
+  geom_histogram(aes(x = Duration)) +
+  xlab("Duration (Days)") + 
+  ylab("Count")
+```
+
+Seems like most grants have a duration under 2100 days, which is roughly six years.
+Let's zoom in on the region between 0 and 2000 days.
+
+```{r}
+grants_2000s |> 
+  mutate(Duration = EndGrant - BeginGrant) |> 
+  filter(Duration <= 2000) |> 
+  ggplot() +
+  geom_histogram(aes(x = Duration), binwidth = 20) +
+  geom_vline(xintercept = 365, color = "red", show.legend = TRUE) +
+  xlab("Duration (Days)") + 
+  ylab("Count")
+```
+
+Perhaps unsurprisingly, the most common award duration is 365 days (line shown in red), or one year.
