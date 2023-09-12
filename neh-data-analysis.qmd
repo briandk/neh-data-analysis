@@ -15,6 +15,7 @@ editor: visual
 #| echo: false
 #| message: false
 library(tidyverse)
+library(forcats)
 library(vroom)
 library(xml2)
 ```
@@ -53,4 +54,31 @@ load_grants_from_raw_xml <- function(path_to_xml) {
 
 # I downloaded and unzipped the 2000s grant data
 grants_2000s <- load_grants_from_raw_xml("data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml")
+```
+
+# Inspecting the Data
+
+First, let's get an idea of what the data looks like.
+
+```{r}
+grants_2000s |> 
+  dplyr::glimpse()
+```
+
+Which programs represent the most grants awarded?
+
+```{r}
+grants_2000s |> 
+  dplyr::count(Program) |> 
+  arrange(desc(n))
+```
+
+What happens if we combine the Original Amount of the grant with the Supplement Count?
+Then we can ask how much total money is being spent by program.
+
+```{r}
+grants_2000s |> 
+  mutate(TotalAmount = OriginalAmount + SupplementAmount) |> 
+  
+  
 ```
