@@ -11,9 +11,40 @@ editor: visual
 #| echo: false
 #| message: false
 library(tidyverse)
+library(xml2)
 
-grants_2008_2009 <- read.csv(
-  "data-raw/NEH_Grants2000s.csv", 
-  header = FALSE
-)
+load_grants_from_raw_xml <- function(path_to_xml) {
+  
+}
+
+grants_raw <- xml2::read_xml("data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml") |> 
+  xml2::as_list()
+
+grants_cleaned <- NULL
+
+for (grant in grants_raw$Grants) {
+  grants_cleaned <- dplyr::bind_rows(grants_cleaned, grant)
+}
+
+# grants_cleaned <- grants_raw$Grants |> 
+#   head(n = 1000) |> 
+#   dplyr::bind_rows() |>
+#   dplyr::transmute_all(unlist) |> 
+#   vroom::vroom_write("data-cleaning/grants-2000s.tsv")
+
+
+# grants_head <- grants_2000s$Grants  |> 
+#   head(n = 2) |> 
+#   dplyr::bind_rows()
+
+# grants_head |>
+#   transmute_all(unlist)
+
+
+```
+
+```{r}
+x <- NULL
+
+x |> head(n = 10)
 ```
