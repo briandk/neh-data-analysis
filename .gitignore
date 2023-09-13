@@ -50,3 +50,6 @@ rsconnect/
 
 # macOS-specific files
 .DS_Store
+
+# US Census API Key (http://api.census.gov/data/key_signup.html)
+us-census-api-key.txt
