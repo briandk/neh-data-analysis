@@ -200,15 +200,84 @@ census_api_key <- readr::read_lines(
   n_max = 1  
 )
 
+load_census_data <- function(census_data = "../data-cleaned/2010-census.tsv") {
+  # We don't want to keep hitting the API every time our code runs, 
+  # so if we already have the data, vroom it and return it.
+  if (file.exists(census_data)) {
+    return(vroom::vroom(census_data))
+  } else {
+    # Otherwise, we hit the API for it, vroom it, and return it
+    get_decennial(
+      geography = "state", 
+      variables = "P001001",
+      year = 2010
+    ) |> vroom::vroom_write(census_data)
+    return(vroom::vroom(census_data))
+  }
+}
+
+
 # I Had to pick a year for the 2000s NEH grant data,
 # so I settled on 2010. I also could have done 2000
-tidycensus::census_api_key(census_api_key)
-state_populations <- get_decennial(
-  geography = "state", 
-  variables = "P001001",
-  year = 2010
+state_populations <- load_census_data()
+
+states <- state_populations |> 
+  rename(
+    census_state = NAME,
+    population =  value
+  ) |>
+  pull()
+```
+
+Unfortunately, R's built-in `state` dataset only has data for the 50 states and not other US territories/regions.
+So, let's find out which census regions/territories don't exist in R's built-in set.
+Then we can add them.
+
+```{r}
+# First we grab and store all the unique values in the Census states.
+census_state_names <- states |> 
+  select(census_state) |> 
+  pull() |> 
+  unique()
+
+# Then, we use them to index into state abbreviations to find out which 
+# aren't in R's built-in dataset
+states_in_census_but_not_in_built_in_dataset <- is.na(state.abb[match(census_state_names, state.name)])
+
+census_state_names[states_in_census_but_not_in_built_in_dataset]
+```
+
+OK, now that we know those states, we can augment the existing state dataset with those abbreviations.
+
+```{r}
+census_states <- state.name
+
+# This is a trick that lets us more easily index state names by their abbreviations
+names(census_states) <- state.abb
+
+# Now we can add DC and Puerto Rico
+census_states <- c(
+  census_states, 
+  DC = "District of Columbia",
+  PR = "Puerto Rico"
 )
 ```
+
+Next, we use our newly-augmented `census_states` to see how many grants would get dropped because we don't have US Census populations for them.
+
+```{r}
+grants_with_no_population_info <- grants_2000s |> 
+  filter(!(InstState %in% names(census_states))) |> 
+  select(InstState)
+
+dim(grants_with_no_population_info)[1]
+percentage_of_grants_without_population_data <- dim(grants_with_no_population_info)[1] / dim(grants_2000s)[1] * 100
+
+percentage_of_grants_without_population_data
+```
+
+The original dataset had `r grants_2000s |> dim[2]` rows.
+The filtered dataset has `r grants_2000s |> filter(InstState %in% census_states`. So, we've dropped
 
 ## Unfinished Thoughts
 
