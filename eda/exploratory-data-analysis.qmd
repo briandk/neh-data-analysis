@@ -81,12 +81,15 @@ grants_2000s |>
 ```{r}
 #| message: false
 
-# I'm reading my API key from a file, so I'm not accidentally
-# committing it to my code.
-census_api_key <- readr::read_lines(
+# We read my API key from a file, because it's a secret. 
+# Reading it from an external file prevents accidentally committing it in git.
+my_census_api_key <- readr::read_lines(
   "../us-census-api-key.txt",
   n_max = 1  
 )
+
+# Then we tell tidycensus to use my API key
+census_api_key(my_census_api_key, install = FALSE)
 
 load_census_data <- function(census_data = "../data-cleaned/2010-census.tsv") {
   # We don't want to keep hitting the API every time our code runs, 
@@ -98,14 +101,12 @@ load_census_data <- function(census_data = "../data-cleaned/2010-census.tsv") {
     get_decennial(
       geography = "state", 
       variables = "P001001",
-      year = 2010
+      year = 2010 # I Had to pick a year for the 2000s NEH grant data, so I settled on 2010.
     ) |> vroom::vroom_write(census_data)
     return(vroom::vroom(census_data))
   }
 }
 
-# I Had to pick a year for the 2000s NEH grant data,
-# so I settled on 2010. I also could have done 2000
 state_populations <- load_census_data()
 
 states <- state_populations |> 
@@ -164,6 +165,46 @@ percentage_of_grants_without_population_data <- round(dim(grants_with_no_populat
 The original dataset had `r dim(grants_2000s)[1]` rows.
 There are `r number_of_grants_with_no_population_data` grants in states with no populations.
 So, if we drop them, we're losing `r percentage_of_grants_without_population_data` percent of our data.
+
+## Augmenting 2000s Grants Data with 2010 Census Data
+
+```{r}
+grants_with_population_data <- grants_2000s |> 
+  filter(InstState %in% names(census_states)) |> 
+  
+  # We index into the census states vector to grab full state names from abbreviations,
+  # then we augment the dataframe with that new column
+  mutate(
+    census_state = census_states[grants_with_population_data$InstState],
+  ) |> 
+  left_join(states, by = join_by(census_state))
+```
+
+## Computing the Total Amount Awarded
+
+Here, we augment the data again with my best sense of the **total amount** of a grant awarded.
+In my thinking, that would be the `AwardOutright` plus matching funds (`AwardMatching`).
+
+```{r}
+grants_with_population_data <- grants_with_population_data |> 
+  mutate(grant_total = AwardOutright + AwardMatching)
+
+grants_with_population_data |> 
+  select(InstState, census_state, population, grant_total)
+```
+
+## Computing the Dollars Awarded Per Capita in Each State
+
+```{r}
+grants_with_population_data |> 
+  select(census_state, grant_total, population) |> 
+  group_by(census_state, population) |> 
+  summarize(total_awarded_to_state = (sum(grant_total))) |> 
+  mutate(per_capita_award = total_awarded_to_state / population)
+#  pull(award_per_capita) |> 
+#  is.numeric() |> 
+#  all()
+```
 
 ## Unfinished Thoughts
 
