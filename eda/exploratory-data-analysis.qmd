@@ -74,127 +74,15 @@ grants_2000s |>
   dplyr::glimpse()
 ```
 
-Which programs represent the most grants awarded?
-
-```{r}
-grants_2000s |> 
-  dplyr::count(Program) |> 
-  arrange(desc(n))
-```
-
-## Visualizing the Distribution of Total Amounts
-
-What happens if we combine the Award Outright with the Award Matching to get a sense of the total distribution of award amounts?
-
-```{r}
-grants_2000s |> 
-  mutate(TotalAmount = AwardOutright + AwardMatching) |> 
-  ggplot() +
-  geom_histogram(aes(x = TotalAmount))
-```
-
-## 
-
-Hmm, that's strange.
-It looks like we have a skewed distribution with a long right tail.
-The histogram suggests there may be just a few awards totaling \$4,000,000 or more.
-Let's look at how many awards exceed \$1,000,000.
-
-```{r}
-exceed_1_million_in_funding <- grants_2000s |> 
-  mutate(TotalAmount = AwardOutright + AwardMatching) |> 
-  filter(TotalAmount > 1e6)
-
-dim(exceed_1_million_in_funding)[1]
-```
-
-Looks like there are 179 projects that exceed \$1 million in funding.
-What happens if we look at *their* distribution?
-
-```{r}
-exceed_1_million_in_funding |> 
-  ggplot() + 
-  geom_histogram(aes(x = TotalAmount))
-```
-
-There seems to be a cluster of about 40 projects whose total funding falls at around \$1.5 million.
-
-## Exploring Grant Duration
-
-How long do grants typically last?
-
-```{r}
-grants_2000s |> 
-  mutate(Duration = EndGrant - BeginGrant) |> 
-  ggplot() +
-  geom_histogram(aes(x = Duration)) +
-  xlab("Duration (Days)") + 
-  ylab("Count")
-```
-
-Seems like most grants have a duration under 2100 days, which is roughly six years.
-Let's zoom in on the region between 0 and 2000 days.
-
-```{r}
-grants_2000s |> 
-  mutate(Duration = EndGrant - BeginGrant) |> 
-  filter(Duration <= 2000) |> 
-  ggplot() +
-  geom_histogram(aes(x = Duration), binwidth = 20) +
-  geom_vline(xintercept = 365, color = "red", alpha = 0.5) +
-  xlab("Duration (Days)") + 
-  ylab("Count")
-```
-
-Perhaps unsurprisingly, the most common award duration is 365 days (line shown in red), or one year.
-
-## Comparing Grant Duration to Total Amount Granted
-
-Is there a relationship between how long a grant lasts and how much money is granted?
-
-```{r}
-grants_2000s |> 
-  mutate(
-    TotalAmount = AwardOutright + AwardMatching,
-    Duration = EndGrant - BeginGrant
-  ) |> 
-  ggplot() +
-  geom_point(aes(Duration, TotalAmount), alpha = 0.2) + 
-  labs(
-    x = "Duration (days)",
-    y = "Total Amount"
-  )
-```
-
-There's an interesting vertical band just past 1750 days, where grants of the same duration have fairly different funding amounts.
-Let's explore that.
-
-```{r}
-grants_2000s |> 
-  mutate(
-    TotalAmount = AwardOutright + AwardMatching,
-    Duration = EndGrant - BeginGrant
-  ) |> 
-  filter(Duration >= 1500 & Duration <= 2000) |> 
-  ggplot() +
-  geom_point(aes(Duration, TotalAmount), alpha = 0.2) + 
-  geom_vline(xintercept = 1825, color = "red", alpha = 0.5)
-  labs(
-    x = "Duration (days)",
-    y = "Total Amount"
-  )
-```
-
-👆 This graph shows us the wide variation in funding for grants that last approximately 5 years.
-
-## What happens when we break down the discipline category by splitting on semicolons?
-
 # RQ 1 - What's the mean funding amount by state? (Sort descending)
 
 ## Loading Data with `tidycensus`
 
 ```{r}
 #| message: false
+
+# I'm reading my API key from a file, so I'm not accidentally
+# committing it to my code.
 census_api_key <- readr::read_lines(
   "../us-census-api-key.txt",
   n_max = 1  
@@ -216,7 +104,6 @@ load_census_data <- function(census_data = "../data-cleaned/2010-census.tsv") {
   }
 }
 
-
 # I Had to pick a year for the 2000s NEH grant data,
 # so I settled on 2010. I also could have done 2000
 state_populations <- load_census_data()
@@ -225,8 +112,7 @@ states <- state_populations |>
   rename(
     census_state = NAME,
     population =  value
-  ) |>
-  pull()
+  )
 ```
 
 Unfortunately, R's built-in `state` dataset only has data for the 50 states and not other US territories/regions.
@@ -236,9 +122,9 @@ Then we can add them.
 ```{r}
 # First we grab and store all the unique values in the Census states.
 census_state_names <- states |> 
-  select(census_state) |> 
-  pull() |> 
-  unique()
+  select(census_state) 
+  # pull() |> 
+  # unique()
 
 # Then, we use them to index into state abbreviations to find out which 
 # aren't in R's built-in dataset
@@ -270,14 +156,14 @@ grants_with_no_population_info <- grants_2000s |>
   filter(!(InstState %in% names(census_states))) |> 
   select(InstState)
 
-dim(grants_with_no_population_info)[1]
-percentage_of_grants_without_population_data <- dim(grants_with_no_population_info)[1] / dim(grants_2000s)[1] * 100
+number_of_grants_with_no_population_data <- dim(grants_with_no_population_info)[1]
 
-percentage_of_grants_without_population_data
+percentage_of_grants_without_population_data <- round(dim(grants_with_no_population_info)[1] / dim(grants_2000s)[1] * 100, 2)
 ```
 
-The original dataset had `r grants_2000s |> dim[2]` rows.
-The filtered dataset has `r grants_2000s |> filter(InstState %in% census_states`. So, we've dropped
+The original dataset had `r dim(grants_2000s)[1]` rows.
+There are `r number_of_grants_with_no_population_data` grants in states with no populations.
+So, if we drop them, we're losing `r percentage_of_grants_without_population_data` percent of our data.
 
 ## Unfinished Thoughts
 
