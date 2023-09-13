@@ -53,3 +53,6 @@ rsconnect/
 
 # US Census API Key (http://api.census.gov/data/key_signup.html)
 us-census-api-key.txt
+
+# Output files for HTML Render
+exploratory-data-analysis_files
