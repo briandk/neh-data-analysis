@@ -22,7 +22,6 @@ Understanding the impact the NEH has
 ```{r}
 #| echo: false
 #| message: false
-library(knitr)
 library(tidycensus)
 library(tidyverse)
 library(scales)
@@ -83,8 +82,7 @@ First, let's get an idea of what the data looks like.
 
 ```{r}
 grants_2000s |> 
-  dplyr::glimpse() |> 
-  knitr::kable()
+  dplyr::glimpse()
 ```
 
 # Research Question: What's the Per-Capita Total Amount Awarded for Each State?
@@ -285,9 +283,7 @@ awards_per_capita_by_state |>
 
 # Limitations
 
-## Analysis Limitations
-
-### We Excluded Certain US Regions and Territories
+## We Excluded Certain US Regions and Territories
 
 Not all parts of the United States are represented in this analysis.
 While we only excluded `percentage_of_grants_without_population_data` percent of the observations in the data, that still excludes entire US regions and territories.
@@ -313,7 +309,7 @@ While that percentage is small, those awards may have had a real impact on the r
 That potential impact isn't captured in this analysis.
 Ultimately, because of our exclusion, we can't say with certainty what the NEH award dollars per capita are in those regions.
 
-## Technical Limitations
+## There are Some Limits to the Reproducibility of This Document
 
 -   To reproduce these findings on another machine, the user would need to get their own [Census API Token](http://api.census.gov/data/key_signup.html).
 -   I could have done more to make the package environment entirely reproducible. As it is, users will have to install the packages I listed in @sec-loading-necessary-libraries.
