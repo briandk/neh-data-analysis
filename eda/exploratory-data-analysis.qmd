@@ -214,18 +214,16 @@ grants_with_population_data |>
 ## We Excluded Certain US Regions and Territories
 
 Not all parts of the United States are represented in this analysis.
-While we only excluded `percentage_of_grants_without_population_data` percent of the data, that still excludes entire US regions and territories.
-One thing we can do is determine how much money in grants is being awarded to those territories and thus being excluded from our analysis.
+While we only excluded `percentage_of_grants_without_population_data` percent of the observations in the data, that still excludes entire US regions and territories.
+One thing we can do is determine how much **money** in grants is being awarded to those territories and thus being excluded from our analysis.
 
 ```{r}
 total_awarded_to_all_us_territories <- grants_2000s |> 
-  mutate(total_awarded = AwardOutright + AwardMatching) |> 
-  select(total_awarded) |> 
+  select(AwardOutright) |> 
   sum()
 
 total_awarded_to_non_us_territories <- grants_with_no_population_info |> 
-  mutate(total_awarded = AwardOutright + AwardMatching) |> 
-  select(total_awarded) |> 
+  select(AwardOutright) |> 
   sum()
 
 percent_awards_excluded <- 
@@ -233,7 +231,10 @@ percent_awards_excluded <-
   round(2)
 ```
 
-In the 2000s the NEH awarded `r total_awarded_to_all_us_territories` dollars, of which `r total_awarded_to_non_us_territories` was excluded from this analysis. That exclusion represents about `r percent_awards_excluded`
+In the 2000s the NEH awarded \$`r total_awarded_to_all_us_territories` dollars, of which \$`r total_awarded_to_non_us_territories` dollars were excluded from this analysis.
+That exclusion represents about `r percent_awards_excluded` percent of NEH's total awards.
+While that percentage is small, those awards may have had a real impact on the residents of those regions.
+Because of our exclusion, we can't say with certainty what the NEH award dollars per capita in those regions represents.
 
 # Sources
 
