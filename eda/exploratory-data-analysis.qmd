@@ -8,6 +8,9 @@ format:
   html:
     toc: true
     number-sections: true
+  revealjs: 
+    number-sections: true
+    embed-resources: true
 editor: visual
 ---
 
@@ -20,16 +23,18 @@ Understanding the impact the NEH has
 ## Loading Necessary Libraries {#sec-loading-necessary-libraries}
 
 ```{r}
-#| echo: false
+#| echo: true
 #| message: false
 library(tidycensus)
 library(tidyverse)
 library(scales)
 library(vroom)
 library(xml2)
+library(pillar)
 
 # Load US Census API Key (http://api.census.gov/data/key_signup.html)
-# We use `read_lines` so as not to get a trailing newline character when reading the file
+# We use `read_lines()` so as not to get a trailing newline 
+# character when reading the file.
 census_api_key <- readr::read_lines(
   "../us-census-api-key.txt",
   n_max = 1  
@@ -39,6 +44,8 @@ census_api_key <- readr::read_lines(
 ## Loading Grant Data from Downloaded XML
 
 ```{r}
+#| echo: true
+#| message: false
 load_2000s_grants_data <- function(
     path_to_xml = "../data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml"
   ) {
@@ -86,6 +93,8 @@ grants_2000s |>
 ```
 
 # Research Question: What's the Per-Capita Total Amount Awarded for Each State?
+
+## Analysis Overview
 
 To answer our research question, we're going to:
 
@@ -175,11 +184,13 @@ Next, we use our newly-augmented `census_states` to see how many grants would ge
 
 ```{r}
 grants_with_no_population_info <- grants_2000s |> 
+  # We're looking for NEH award regions *not* in our census data
   filter(!(InstState %in% names(census_states)))
 
 number_of_grants_with_no_population_data <- dim(grants_with_no_population_info)[1]
 
-percentage_of_grants_without_population_data <- round(dim(grants_with_no_population_info)[1] / dim(grants_2000s)[1] * 100, 2)
+percentage_of_grants_without_population_data <- 
+  round(dim(grants_with_no_population_info)[1] / dim(grants_2000s)[1] * 100, 2)
 ```
 
 The original dataset had `r dim(grants_2000s)[1]` rows.
@@ -277,7 +288,15 @@ awards_per_capita_by_state |>
   theme_minimal()
 ```
 
+```{r}
+
+```
+
 # Analysis and Interpretation
+
+DC has the highest NEH dollars awarded per-person number than any other state in the US.
+Could this be because DC has such a small population?
+Could it be that the number of awards in DC is simply greater than the number of awards in other states?
 
 # Key Take-Away
 
