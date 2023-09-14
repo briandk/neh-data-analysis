@@ -4,14 +4,20 @@ author: "Brian A. Danielak"
 format: 
   pdf:
     toc: true
+    number-sections: true
   html:
     toc: true
+    number-sections: true
 editor: visual
 ---
 
+# Executive Summary
+
+Understanding the impact the NEH has
+
 # Loading and Cleaning the Data
 
-## Loading Necessary Libraries
+## Loading Necessary Libraries {#sec-loading-necessary-libraries}
 
 ```{r}
 # #| echo: false
@@ -221,8 +227,9 @@ awards_per_capita_by_state
 
 ```{r}
 #| fig-height: 10
+#| fig-width: 8
 
-national_mean_per_capita_award <- (
+national_per_capita_award <- (
   sum(awards_per_capita_by_state$total_awarded_to_state) / 
   sum(awards_per_capita_by_state$population)
 )
@@ -240,9 +247,10 @@ awards_per_capita_by_state |>
   ) +
   coord_flip() +
   geom_hline(
-    yintercept = national_mean_per_capita_award,
+    yintercept = national_per_capita_award,
     color = "darkorange",
-    alpha = 0.5,
+    alpha = 0.75,
+    
   ) +
   scale_color_viridis_c(name = "% of NEH Award Budget") + 
   scale_size_continuous(name = "State Population") + 
@@ -254,17 +262,20 @@ awards_per_capita_by_state |>
   labs(
     title = "Exploring NEH Award Dollars Spent Per-Capita",
     subtitle = "Broken down by US States and Territories",
-    caption = "The mean national per-capita NEH award amount is indicated by the orange vertical line"
-  )
-
-  # theme_minimal()
+    caption = "The mean national per-capita NEH award amount is indicated by the orange vertical line."
+  ) +
+  theme_minimal()
 ```
 
-# Conclusion
+# Analysis and Interpretation
+
+# Key Take-Away
 
 # Limitations
 
-## We Excluded Certain US Regions and Territories
+## Analysis Limitations
+
+### We Excluded Certain US Regions and Territories
 
 Not all parts of the United States are represented in this analysis.
 While we only excluded `percentage_of_grants_without_population_data` percent of the observations in the data, that still excludes entire US regions and territories.
@@ -287,10 +298,22 @@ percent_awards_excluded <-
 In the 2000s the NEH awarded \$`r total_awarded_to_all_us_territories` dollars, of which \$`r total_awarded_to_non_us_territories` dollars were excluded from this analysis.
 That exclusion represents about `r percent_awards_excluded` percent of NEH's total awards.
 While that percentage is small, those awards may have had a real impact on the residents of those regions.
-Because of our exclusion, we can't say with certainty what the NEH award dollars per capita in those regions represents.
+That potential impact isn't captured in this analysis.
+Ultimately, because of our exclusion, we can't say with certainty what the NEH award dollars per capita are in those regions.
+
+## Technical Limitations
+
+-   To reproduce these findings on another machine, the user would need to get their own [Census API Token](http://api.census.gov/data/key_signup.html).
+-   I could have done more to make the package environment entirely reproducible. As it is, users will have to install the packages I listed in @sec-loading-necessary-libraries.
+
+# TODO
+
+-   Set echo = False for most of the code chunks.
+-   Flesh out Analysis and Key Take-Away sections.
 
 # Sources
 
 -   StackOverflow: Converting a State Name to State Abbreviation: [*https://stackoverflow.com/questions/5411979/state-name-to-abbreviation*](https://stackoverflow.com/questions/5411979/state-name-to-abbreviation){.uri}
 -   Analyzing US Census Data: Methods, Maps, and Models in R: [*https://walker-data.com/census-r/an-introduction-to-tidycensus.html?q=key#getting-started-with-tidycensus*](https://walker-data.com/census-r/an-introduction-to-tidycensus.html?q=key#getting-started-with-tidycensus){.uri}
 -   US Census API Key Request Form: [*http://api.census.gov/data/key_signup.html*](http://api.census.gov/data/key_signup.html){.uri}
+
