@@ -123,9 +123,9 @@ Then we can add them.
 ```{r}
 # First we grab and store all the unique values in the Census states.
 census_state_names <- states |> 
-  select(census_state) 
-  # pull() |> 
-  # unique()
+  select(census_state) |> 
+  pull() |>
+  unique()
 
 # Then, we use them to index into state abbreviations to find out which 
 # aren't in R's built-in dataset
@@ -154,8 +154,7 @@ Next, we use our newly-augmented `census_states` to see how many grants would ge
 
 ```{r}
 grants_with_no_population_info <- grants_2000s |> 
-  filter(!(InstState %in% names(census_states))) |> 
-  select(InstState)
+  filter(!(InstState %in% names(census_states)))
 
 number_of_grants_with_no_population_data <- dim(grants_with_no_population_info)[1]
 
@@ -170,12 +169,15 @@ So, if we drop them, we're losing `r percentage_of_grants_without_population_dat
 
 ```{r}
 grants_with_population_data <- grants_2000s |> 
-  filter(InstState %in% names(census_states)) |> 
+  filter(InstState %in% names(census_states))
+
+indexed_census_states <- census_states[grants_with_population_data$InstState]
   
   # We index into the census states vector to grab full state names from abbreviations,
   # then we augment the dataframe with that new column
-  mutate(
-    census_state = census_states[grants_with_population_data$InstState],
+  grants_with_population_data <- grants_with_population_data |> 
+    mutate(
+      census_state = indexed_census_states,
   ) |> 
   left_join(states, by = join_by(census_state))
 ```
@@ -186,11 +188,14 @@ Here, we augment the data again with my best sense of the **total amount** of a 
 In my thinking, that would be the `AwardOutright` plus matching funds (`AwardMatching`).
 
 ```{r}
-grants_with_population_data <- grants_with_population_data |> 
+grants_with_population_data <- grants_with_population_data |>
   mutate(grant_total = AwardOutright + AwardMatching)
 
 grants_with_population_data |> 
-  select(InstState, census_state, population, grant_total)
+  select(census_state)
+
+# grants_with_population_data |> 
+#   select(InstState, census_state, population, grant_total)
 ```
 
 ## Computing the Dollars Awarded Per Capita in Each State
@@ -201,14 +206,34 @@ grants_with_population_data |>
   group_by(census_state, population) |> 
   summarize(total_awarded_to_state = (sum(grant_total))) |> 
   mutate(per_capita_award = total_awarded_to_state / population)
-#  pull(award_per_capita) |> 
-#  is.numeric() |> 
-#  all()
+
 ```
 
-## Unfinished Thoughts
+# Limitations
 
-We can use `DisciplineCount` to determine how many fields to split the Discipline into.
+## We Excluded Certain US Regions and Territories
+
+Not all parts of the United States are represented in this analysis.
+While we only excluded `percentage_of_grants_without_population_data` percent of the data, that still excludes entire US regions and territories.
+One thing we can do is determine how much money in grants is being awarded to those territories and thus being excluded from our analysis.
+
+```{r}
+total_awarded_to_all_us_territories <- grants_2000s |> 
+  mutate(total_awarded = AwardOutright + AwardMatching) |> 
+  select(total_awarded) |> 
+  sum()
+
+total_awarded_to_non_us_territories <- grants_with_no_population_info |> 
+  mutate(total_awarded = AwardOutright + AwardMatching) |> 
+  select(total_awarded) |> 
+  sum()
+
+percent_awards_excluded <- 
+  ((total_awarded_to_non_us_territories / total_awarded_to_all_us_territories) * 100) |> 
+  round(2)
+```
+
+In the 2000s the NEH awarded `r total_awarded_to_all_us_territories` dollars, of which `r total_awarded_to_non_us_territories` was excluded from this analysis. That exclusion represents about `r percent_awards_excluded`
 
 # Sources
 
