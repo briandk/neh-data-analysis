@@ -20,8 +20,9 @@ Understanding the impact the NEH has
 ## Loading Necessary Libraries {#sec-loading-necessary-libraries}
 
 ```{r}
-# #| echo: false
-# #| message: false
+#| echo: false
+#| message: false
+library(knitr)
 library(tidycensus)
 library(tidyverse)
 library(scales)
@@ -39,7 +40,9 @@ census_api_key <- readr::read_lines(
 ## Loading Grant Data from Downloaded XML
 
 ```{r}
-load_grants_from_raw_xml <- function(path_to_xml = "../data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml") {
+load_2000s_grants_data <- function(
+    path_to_xml = "../data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml"
+  ) {
   
   # First, we check if the rectangularized file already exists.
   if (file.exists("../data-cleaned/grants-data-cleaned.tsv")) {
@@ -48,42 +51,49 @@ load_grants_from_raw_xml <- function(path_to_xml = "../data-raw/NEH_Grants2000s_
     grants_cleaned <- vroom::vroom("../data-cleaned/grants-data-cleaned.tsv")
     return(grants_cleaned)
   
-  # Otherwise, we do the expensive thing and load the data from XML
+  # Otherwise, we do the expensive thing and parse the XML data
   } else {
-      grants_raw <- xml2::read_xml(path_to_xml) |> 
-        xml2::as_list()
-      
-      grants_tibble <- grants_raw$Grants |> 
-        lapply(unlist) |> 
-        dplyr::bind_rows()
-  
-      # Write the rectangularized data out so we can load *it* next time
-      grants_tibble |> 
-        dplyr::transmute_all(unlist) |> 
-        vroom::vroom_write("../data-cleaned/grants-data-cleaned.tsv")
-      
-      # Load the rectangularized data from file 
-      # (`vroom` will help infer column types automatically on load.)
-      grants_cleaned <- vroom::vroom("../data-cleaned/grants-data-cleaned.tsv") 
-      return(grants_cleaned)
+    grants_raw <- xml2::read_xml(path_to_xml) |> 
+      xml2::as_list()
+    
+    grants_tibble <- grants_raw$Grants |> 
+      lapply(unlist) |> 
+      dplyr::bind_rows()
+
+    # Write the rectangularized data out so we can load *it* next time
+    grants_tibble |> 
+      dplyr::transmute_all(unlist) |> 
+      vroom::vroom_write("../data-cleaned/grants-data-cleaned.tsv")
+    
+    # Load the rectangularized data from file 
+    # (`vroom` will help infer column types automatically on load.)
+    grants_cleaned <- vroom::vroom("../data-cleaned/grants-data-cleaned.tsv") 
+    return(grants_cleaned)
   }
 }
 
 # I downloaded and unzipped the 2000s grant data
 # https://securegrants.neh.gov/open/data/NEH_Grants2000s_Flat.zip
-grants_2000s <- load_grants_from_raw_xml()
+grants_2000s <- load_2000s_grants_data()
 ```
 
-# Exploratory Data Analysis
+## Inspecting the Data
 
 First, let's get an idea of what the data looks like.
 
 ```{r}
 grants_2000s |> 
-  dplyr::glimpse()
+  dplyr::glimpse() |> 
+  knitr::kable()
 ```
 
-# Research Question - What's the Per-Capita Awarded for Each State?
+# Research Question: What's the Per-Capita Total Amount Awarded for Each State?
+
+To answer our research question, we're going to:
+
+1.  Get census data
+2.  Join census populations with existing awards data
+3.  Visualize the Awards Per-Capita in each state
 
 ## Loading Census Data with `tidycensus`
 
@@ -105,12 +115,14 @@ load_census_data <- function(census_data = "../data-cleaned/2010-census.tsv") {
   # so if we already have the data, vroom it and return it.
   if (file.exists(census_data)) {
     return(vroom::vroom(census_data))
+  # Otherwise, we hit the API for it, vroom it, and return it
   } else {
-    # Otherwise, we hit the API for it, vroom it, and return it
+    
+    # I Had to pick a year for the 2000s NEH grant data, so I settled on 2010.
     get_decennial(
       geography = "state", 
       variables = "P001001",
-      year = 2010 # I Had to pick a year for the 2000s NEH grant data, so I settled on 2010.
+      year = 2010 
     ) |> vroom::vroom_write(census_data)
     return(vroom::vroom(census_data))
   }
@@ -310,10 +322,12 @@ Ultimately, because of our exclusion, we can't say with certainty what the NEH a
 
 -   Set echo = False for most of the code chunks.
 -   Flesh out Analysis and Key Take-Away sections.
+-   Check code for lines that are too long
 
 # Sources
 
+-   `fct_reorder` in R package `forcats` documentation: [*https://forcats.tidyverse.org/reference/fct_reorder.html*](https://forcats.tidyverse.org/reference/fct_reorder.html)
+-   `as_list` in R package `xml2`: <https://xml2.r-lib.org/reference/as_list.html>
 -   StackOverflow: Converting a State Name to State Abbreviation: [*https://stackoverflow.com/questions/5411979/state-name-to-abbreviation*](https://stackoverflow.com/questions/5411979/state-name-to-abbreviation){.uri}
 -   Analyzing US Census Data: Methods, Maps, and Models in R: [*https://walker-data.com/census-r/an-introduction-to-tidycensus.html?q=key#getting-started-with-tidycensus*](https://walker-data.com/census-r/an-introduction-to-tidycensus.html?q=key#getting-started-with-tidycensus){.uri}
 -   US Census API Key Request Form: [*http://api.census.gov/data/key_signup.html*](http://api.census.gov/data/key_signup.html){.uri}
-
