@@ -1,8 +1,10 @@
 ---
-title: "NEH Grants Data Analysis"
+title: "NEH Grants from the 2000s Data Analysis"
 author: "Brian A. Danielak"
 format: 
   html:
+    toc: true
+  pdf:
     toc: true
 editor: visual
 ---
@@ -74,9 +76,9 @@ grants_2000s |>
   dplyr::glimpse()
 ```
 
-# RQ 1 - What's the mean funding amount by state? (Sort descending)
+# Research Question - What's the Per-Capita Awarded for Each State?
 
-## Loading Data with `tidycensus`
+## Loading Census Data with `tidycensus`
 
 ```{r}
 #| message: false
@@ -115,6 +117,8 @@ states <- state_populations |>
     population =  value
   )
 ```
+
+## Augmenting NEH Data with U.S. Census Data
 
 Unfortunately, R's built-in `state` dataset only has data for the 50 states and not other US territories/regions.
 So, let's find out which census regions/territories don't exist in R's built-in set.
@@ -201,13 +205,49 @@ grants_with_population_data |>
 ## Computing the Dollars Awarded Per Capita in Each State
 
 ```{r}
-grants_with_population_data |> 
+awards_per_capita_by_state <- grants_with_population_data |> 
   select(census_state, grant_total, population) |> 
   group_by(census_state, population) |> 
-  summarize(total_awarded_to_state = (sum(grant_total))) |> 
+  summarize(
+    total_awarded_to_state = (sum(grant_total))) |> 
   mutate(per_capita_award = total_awarded_to_state / population)
 
+awards_per_capita_by_state
+
 ```
+
+## Visualizing Awards Per-Capita in Each State
+
+```{r}
+#| fig-height: 10
+
+national_mean_per_capita_award <- (
+  sum(awards_per_capita_by_state$total_awarded_to_state) / 
+  sum(awards_per_capita_by_state$population)
+)
+  
+    
+  # summarize(national_mean_per_capita = sum(per_capita_award))
+
+awards_per_capita_by_state |> 
+  ggplot() + 
+  geom_point(
+    aes(x = forcats::fct_reorder(census_state, per_capita_award), 
+        y = per_capita_award,
+        size = population,
+        color = total_awarded_to_state),
+    ) + 
+  coord_flip() +
+  geom_hline(
+    yintercept = national_mean_per_capita_award,
+    color = "darkblue",
+    alpha = 0.5,
+  ) +
+  scale_color_viridis_c() + 
+  theme_minimal()
+```
+
+# Conclusion
 
 # Limitations
 
