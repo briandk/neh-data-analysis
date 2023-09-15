@@ -56,7 +56,11 @@ my_census_api_key <- readr::read_lines(
 #| message: false
 load_grants_data <- function(
     year = 2000,
-    path_to_xml = sprintf("../data-raw/NEH_Grants%s_Flat/NEH_Grants%ss_Flat.xml", year, year)
+    path_to_xml = sprintf(
+      here("/data-raw/NEH_Grants%s_Flat/NEH_Grants%ss_Flat.xml"), 
+      year, 
+      year
+    )
   ) {
   
   # First, we check if the rectangularized file already exists.
