@@ -67,7 +67,8 @@ load_grants_data <- function(
   if (file.exists(here("data-cleaned/grants-data-cleaned.tsv"))) {
     
     # If it exists, we load it and return it
-    vroom("../data-cleaned/grants-data-cleaned.tsv")
+    
+    vroom(here("data-cleaned/grants-data-cleaned.tsv"))
   
   # Otherwise, we do the expensive thing and parse the XML data
   } else {
