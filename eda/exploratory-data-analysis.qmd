@@ -24,19 +24,27 @@ Understanding the impact the NEH has
 
 ```{r}
 #| echo: true
-#| message: false
-library(tidycensus)
-library(tidyverse)
-library(scales)
-library(vroom)
-library(xml2)
-library(pillar)
+suppressMessages(
+  {
+    library(tidycensus)
+    library(forcats)
+    library(here)
+    library(tidyverse)
+    library(scales)
+    library(vroom)
+    library(xml2)
+    # library(pillar)
+  }
+)
+
 
 # Load US Census API Key (http://api.census.gov/data/key_signup.html)
+# Committing the API key would be a security hazard, so we
+# read it from an external, non-version-controlled file.
 # We use `read_lines()` so as not to get a trailing newline 
 # character when reading the file.
-census_api_key <- readr::read_lines(
-  "../us-census-api-key.txt",
+my_census_api_key <- readr::read_lines(
+  here("us-census-api-key.txt"),
   n_max = 1  
 )
 ```
@@ -46,41 +54,36 @@ census_api_key <- readr::read_lines(
 ```{r}
 #| echo: true
 #| message: false
-load_2000s_grants_data <- function(
-    path_to_xml = "../data-raw/NEH_Grants2000s_Flat/NEH_Grants2000s_Flat.xml"
+load_grants_data <- function(
+    year = 2000,
+    path_to_xml = sprintf("../data-raw/NEH_Grants%s_Flat/NEH_Grants%ss_Flat.xml", year, year)
   ) {
   
   # First, we check if the rectangularized file already exists.
-  if (file.exists("../data-cleaned/grants-data-cleaned.tsv")) {
+  if (file.exists(here("data-cleaned/grants-data-cleaned.tsv"))) {
     
     # If it exists, we load it and return it
-    grants_cleaned <- vroom::vroom("../data-cleaned/grants-data-cleaned.tsv")
-    return(grants_cleaned)
+    vroom("../data-cleaned/grants-data-cleaned.tsv")
   
   # Otherwise, we do the expensive thing and parse the XML data
   } else {
-    grants_raw <- xml2::read_xml(path_to_xml) |> 
-      xml2::as_list()
+    grants_raw <- read_xml(path_to_xml) |> 
+      as_list()
     
     grants_tibble <- grants_raw$Grants |> 
       lapply(unlist) |> 
-      dplyr::bind_rows()
+      bind_rows()
 
     # Write the rectangularized data out so we can load *it* next time
     grants_tibble |> 
-      dplyr::transmute_all(unlist) |> 
-      vroom::vroom_write("../data-cleaned/grants-data-cleaned.tsv")
-    
-    # Load the rectangularized data from file 
-    # (`vroom` will help infer column types automatically on load.)
-    grants_cleaned <- vroom::vroom("../data-cleaned/grants-data-cleaned.tsv") 
-    return(grants_cleaned)
+      transmute_all(unlist) |> 
+      vroom_write("../data-cleaned/grants-data-cleaned.tsv")
   }
 }
 
 # I downloaded and unzipped the 2000s grant data
 # https://securegrants.neh.gov/open/data/NEH_Grants2000s_Flat.zip
-grants_2000s <- load_2000s_grants_data()
+grants_2000s <- load_grants_data()
 ```
 
 ## Inspecting the Data
@@ -107,12 +110,6 @@ To answer our research question, we're going to:
 ```{r}
 #| message: false
 
-# We read my API key from a file, because it's a secret. 
-# Reading it from an external file prevents accidentally committing it in git.
-my_census_api_key <- readr::read_lines(
-  "../us-census-api-key.txt",
-  n_max = 1  
-)
 
 # Then we tell tidycensus to use my API key
 census_api_key(my_census_api_key, install = FALSE)
@@ -121,17 +118,16 @@ load_census_data <- function(census_data = "../data-cleaned/2010-census.tsv") {
   # We don't want to keep hitting the API every time our code runs, 
   # so if we already have the data, vroom it and return it.
   if (file.exists(census_data)) {
-    return(vroom::vroom(census_data))
+    vroom(census_data)
   # Otherwise, we hit the API for it, vroom it, and return it
   } else {
-    
     # I Had to pick a year for the 2000s NEH grant data, so I settled on 2010.
     get_decennial(
       geography = "state", 
       variables = "P001001",
       year = 2010 
-    ) |> vroom::vroom_write(census_data)
-    return(vroom::vroom(census_data))
+    ) |> 
+      vroom_write(census_data)
   }
 }
 
@@ -146,9 +142,7 @@ states <- state_populations |>
 
 ## Augmenting NEH Data with U.S. Census Data
 
-Unfortunately, R's built-in `state` dataset only has data for the 50 states and not other US territories/regions.
-So, let's find out which census regions/territories don't exist in R's built-in set.
-Then we can add them.
+Unfortunately, R's built-in `state` dataset only has data for the 50 states and not other US territories/regions. So, let's find out which census regions/territories don't exist in R's built-in set. Then we can add them.
 
 ```{r}
 # First we grab and store all the unique values in the Census states.
@@ -159,9 +153,11 @@ census_state_names <- states |>
 
 # Then, we use them to index into state abbreviations to find out which 
 # aren't in R's built-in dataset
-states_in_census_but_not_in_built_in_dataset <- is.na(state.abb[match(census_state_names, state.name)])
+# Could use `setdiff()`
+states_in_census_but_not_in_built_in_dataset <- 
+  setdiff(census_state_names, state.name)
 
-census_state_names[states_in_census_but_not_in_built_in_dataset]
+states_in_census_but_not_in_built_in_dataset
 ```
 
 OK, now that we know those states, we can augment the existing state dataset with those abbreviations.
@@ -183,48 +179,47 @@ census_states <- c(
 Next, we use our newly-augmented `census_states` to see how many grants would get dropped because we don't have US Census populations for them.
 
 ```{r}
+`%notin%` <- Negate(`%in%`)
 grants_with_no_population_info <- grants_2000s |> 
   # We're looking for NEH award regions *not* in our census data
-  filter(!(InstState %in% names(census_states)))
+  filter((InstState %notin% names(census_states)))
 
-number_of_grants_with_no_population_data <- dim(grants_with_no_population_info)[1]
+number_of_grants_with_no_population_data <- nrow(grants_with_no_population_info)
 
 percentage_of_grants_without_population_data <- 
-  round(dim(grants_with_no_population_info)[1] / dim(grants_2000s)[1] * 100, 2)
+  round(nrow(grants_with_no_population_info) / nrow(grants_2000s) * 100, 2)
 ```
 
-The original dataset had `r dim(grants_2000s)[1]` rows.
-There are `r number_of_grants_with_no_population_data` grants in states with no populations.
-So, if we drop them, we're losing `r percentage_of_grants_without_population_data` percent of our data.
+The original dataset had `r nrow(grants_2000s)` rows. There are `r number_of_grants_with_no_population_data` grants in states with no populations. So, if we drop them, we're losing `r percentage_of_grants_without_population_data` percent of our data.
 
 ## Augmenting 2000s Grants Data with 2010 Census Data
 
 ```{r}
-grants_with_population_data <- grants_2000s |> 
+grants_with_population_data <- 
+  grants_2000s |> 
   filter(InstState %in% names(census_states))
 
+# You can't subset within a base-R pipe, so we create this variable
 indexed_census_states <- census_states[grants_with_population_data$InstState]
   
   # We index into the census states vector to grab full state names from abbreviations,
   # then we augment the dataframe with that new column
-  grants_with_population_data <- grants_with_population_data |> 
+  grants_with_population_data <- 
+    grants_with_population_data |> 
     mutate(
       census_state = indexed_census_states,
-  ) |> 
-  left_join(states, by = join_by(census_state))
+    ) |> 
+    left_join(states)
 ```
 
 ## Computing the Total Amount Awarded
 
-Here, we augment the data again with my best sense of the **total amount** of a grant awarded.
-In my thinking, that would be the `AwardOutright` plus matching funds (`AwardMatching`).
+Here, we augment the data again with my best sense of the **total amount** of a grant awarded. In my thinking, that would be the `AwardOutright` plus matching funds (`AwardMatching`).
 
 ```{r}
-grants_with_population_data <- grants_with_population_data |>
+grants_with_population_data <- 
+  grants_with_population_data |>
   mutate(grant_total = AwardOutright + AwardMatching)
-
-grants_with_population_data |> 
-  select(census_state)
 
 # grants_with_population_data |> 
 #   select(InstState, census_state, population, grant_total)
@@ -232,19 +227,33 @@ grants_with_population_data |>
 
 ## Computing the Dollars Awarded Per Capita in Each State
 
+Next we:
+
+1.  Group by state
+2.  Sum the total awards for each state
+3.  Create a new column dividng those totals by the state population
+4.  Check the output to make sure the transformation worked
+
+Then we check the first few rows to make sure the transformation worked.
+
 ```{r}
-awards_per_capita_by_state <- grants_with_population_data |> 
+awards_per_capita_by_state <- 
+  grants_with_population_data |> 
   select(census_state, grant_total, population) |> 
   group_by(census_state, population) |> 
   summarize(
-    total_awarded_to_state = (sum(grant_total))) |> 
-  mutate(per_capita_award = total_awarded_to_state / population)
+    total_awarded_to_state = (sum(grant_total))
+  ) |> 
+  mutate(per_capita_award = total_awarded_to_state / population) |>
+  arrange(desc(per_capita_award))
 
-awards_per_capita_by_state
-
+awards_per_capita_by_state |> 
+  glimpse()
 ```
 
 ## Visualizing Awards Per-Capita in Each State
+
+Now we want to be able to compare states to each other based on the number of dollars the NEH awarded in grants per-capita in each state. Dividing the total awarded amount to the state by the population gives us a normalized number of dollars spent per person. In other words, we ask how much the NEH invested in each state on a per-person basis.
 
 ```{r}
 #| fig-height: 10
@@ -255,7 +264,10 @@ national_per_capita_award <- (
   sum(awards_per_capita_by_state$population)
 )
 
-national_award_total <- awards_per_capita_by_state$total_awarded_to_state |> sum()
+pull(awards_per_capita_by_state, population)
+pull(awards_per_capita_by_state, total_awarded_to_state)
+
+national_award_total <- sum(awards_per_capita_by_state$total_awarded_to_state)
 
 awards_per_capita_by_state |>
   ggplot() +
@@ -271,21 +283,24 @@ awards_per_capita_by_state |>
     yintercept = national_per_capita_award,
     color = "darkorange",
     alpha = 0.75,
-    
-  ) +
-  scale_color_viridis_c(name = "% of NEH Award Budget") + 
-  scale_size_continuous(name = "State Population") + 
-  scale_y_continuous(
-    name = "Per Capita Award ($USD)", 
-    labels = scales::label_dollar()
-  ) +
-  scale_x_discrete(name = "US State/Region") +
-  labs(
-    title = "Exploring NEH Award Dollars Spent Per-Capita",
-    subtitle = "Broken down by US States and Territories",
-    caption = "The mean national per-capita NEH award amount is indicated by the orange vertical line."
-  ) +
-  theme_minimal()
+
+  ) # +
+  # scale_color_viridis_c(name = "% of NEH Award Budget") + 
+  # scale_size_continuous(
+  #   name = "State Population",
+  #   labels = scales::comma(population)
+  # ) +
+  # scale_y_continuous(
+  #   name = "Per Capita Award ($USD)", 
+  #   labels = scales::label_dollar(per_capita_award)
+  # ) +
+  # scale_x_discrete(name = "US State/Region") +
+  # labs(
+  #   title = "Exploring NEH Award Dollars Spent Per-Capita",
+  #   subtitle = "Broken down by US States and Territories",
+  #   caption = "The mean national per-capita NEH award amount is indicated by the orange vertical line."
+  # ) +
+  # theme_bw()
 ```
 
 ```{r}
@@ -294,19 +309,17 @@ awards_per_capita_by_state |>
 
 # Analysis and Interpretation
 
-DC has the highest NEH dollars awarded per-person number than any other state in the US.
-Could this be because DC has such a small population?
-Could it be that the number of awards in DC is simply greater than the number of awards in other states?
+DC has the highest NEH dollars awarded per-person number than any other state in the US. Could this be because DC has such a small population? Could it be that the number of awards in DC is simply greater than the number of awards in other states?
 
 # Key Take-Away
 
 # Limitations
 
+## The dollar amounts are unadjusted for inflation
+
 ## We Excluded Certain US Regions and Territories
 
-Not all parts of the United States are represented in this analysis.
-While we only excluded `percentage_of_grants_without_population_data` percent of the observations in the data, that still excludes entire US regions and territories.
-One thing we can do is determine how much **money** in grants is being awarded to those territories and thus being excluded from our analysis.
+Not all parts of the United States are represented in this analysis. While we only excluded `percentage_of_grants_without_population_data` percent of the observations in the data, that still excludes entire US regions and territories. One thing we can do is determine how much **money** in grants is being awarded to those territories and thus being excluded from our analysis.
 
 ```{r}
 total_awarded_to_all_us_territories <- grants_2000s |> 
@@ -322,11 +335,7 @@ percent_awards_excluded <-
   round(2)
 ```
 
-In the 2000s the NEH awarded \$`r total_awarded_to_all_us_territories` dollars, of which \$`r total_awarded_to_non_us_territories` dollars were excluded from this analysis.
-That exclusion represents about `r percent_awards_excluded` percent of NEH's total awards.
-While that percentage is small, those awards may have had a real impact on the residents of those regions.
-That potential impact isn't captured in this analysis.
-Ultimately, because of our exclusion, we can't say with certainty what the NEH award dollars per capita are in those regions.
+In the 2000s the NEH awarded \$`r total_awarded_to_all_us_territories` dollars, of which \$`r total_awarded_to_non_us_territories` dollars were excluded from this analysis. That exclusion represents about `r percent_awards_excluded` percent of NEH's total awards. While that percentage is small, those awards may have had a real impact on the residents of those regions. That potential impact isn't captured in this analysis. Ultimately, because of our exclusion, we can't say with certainty what the NEH award dollars per capita are in those regions.
 
 ## There are Some Limits to the Reproducibility of This Document
 
