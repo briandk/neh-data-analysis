@@ -279,28 +279,29 @@ awards_per_capita_by_state |>
     )
   ) +
   coord_flip() +
+  scale_size_continuous(
+    name = "State Population",
+    labels = scales::label_comma()
+  ) +
   geom_hline(
     yintercept = national_per_capita_award,
     color = "darkorange",
     alpha = 0.75,
 
-  ) # +
-  # scale_color_viridis_c(name = "% of NEH Award Budget") + 
-  # scale_size_continuous(
-  #   name = "State Population",
-  #   labels = scales::comma(population)
-  # ) +
-  # scale_y_continuous(
-  #   name = "Per Capita Award ($USD)", 
-  #   labels = scales::label_dollar(per_capita_award)
-  # ) +
+  ) +
+  scale_color_viridis_c(name = "% of NEH Award Budget") + 
+  scale_y_continuous(
+    name = "Per Capita Award ($USD)", 
+    labels = scales::label_dollar()
+  ) +
   # scale_x_discrete(name = "US State/Region") +
-  # labs(
-  #   title = "Exploring NEH Award Dollars Spent Per-Capita",
-  #   subtitle = "Broken down by US States and Territories",
-  #   caption = "The mean national per-capita NEH award amount is indicated by the orange vertical line."
-  # ) +
-  # theme_bw()
+  labs(
+    x = "US State or Region",
+    title = "Exploring NEH Award Dollars Spent Per-Capita",
+    subtitle = "Broken down by US States and Territories",
+    caption = "The mean national per-capita NEH award amount is indicated by the orange vertical line."
+  ) +
+  theme_bw()
 ```
 
 ```{r}
