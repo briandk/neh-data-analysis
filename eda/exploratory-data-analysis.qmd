@@ -368,35 +368,22 @@ awards_per_capita_by_state |>
 ```
 
 ```{r}
-n <- 
-  awards_per_capita_by_state |> 
-  select(per_capita_award) |> 
-  pull()
-
-us_regions <- 
-  awards_per_capita_by_state |> 
-  select() |> 
-  pull()
-
 per_capita_by_state <- tibble(
-  n = n,
-  state = us_regions
+  n = pull(awards_per_capita_by_state, per_capita_award),
+  state = pull(awards_per_capita_by_state, census_state)
 )
-
-# plot_usmap(
-#   data = awards
-#   
-# )
 
 plot_usmap(
   data = per_capita_by_state,
   values = "n",
   color = "blue"
 ) +
-  scale_fill_continuous(low = "white", high = "blue", name = "Per Capita Award ($USD))") +
+  scale_fill_continuous(low = "white", high = "blue", name = "Per Capita Award ($USD)") +
   theme(legend.position = "right")
 
 ```
+
+The extreme DC value appears to be masked in a typical USA map plot due to the small size of the District.
 
 ```{r}
 plot_usmap(
@@ -409,6 +396,7 @@ plot_usmap(
   theme(legend.position = "right")
 
 ```
+Here, we see that when adjusted for NEH dollars received per-capital, larger area states appear not to be over represented.
 
 ```{r}
 state_abbrvs <-  intersect(names(census_states), .west_region)
