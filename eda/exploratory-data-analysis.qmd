@@ -16,7 +16,13 @@ editor: visual
 
 # Executive Summary
 
-Understanding the impact the NEH has
+In this brief report, we examine how the total NEH award dollars and matching funds are distributed on a per-state, per-person basis.
+Breaking the data down per person helps correct for the population effects of very low-population and very high-population states because states are considered proportionately, rather than by their strict population.
+There are three major findings:
+
+1.  Most states hover around the national average of `r scales::dollar(3.52)` US dollars total awarded per person.
+2.  Washington, DC has the highest dollars per person awarded at roughly `r scales::dollar(45)`. That's 3 times the next highest state.
+3. In terms of the percentage share of total dollars awarded, New York leads at around 12\%, with California behind it at roughly 6\%. This seems disproportionate given their per capita dollars awarded.
 
 # Loading and Cleaning the Data
 
@@ -343,11 +349,17 @@ awards_per_capita_by_state |>
 
 # Analysis and Interpretation
 
-DC has the highest NEH dollars awarded per-person number than any other state in the US.
+At around `r scales::dollar(45)` DC has more NEH dollars awarded per-person number than any other state in the US.
 Could this be because DC has such a small population?
+That guess seems somewhat unlikely because we tried to correct for population with our per-person counts.
 Could it be that the number of awards in DC is simply greater than the number of awards in other states?
+One possible speculation is that DC has more museums and humanities venues per person than any other state/territory in the country.
 
-# Key Take-Away
+We note most states are tightly grouped around \$`r scales::dollar(national_per_capita_award)` US dollars per person.
+Extremely low outliers are Florida and Texas at roughly 2 dollars per person, while at the upper end Washington DC has roughly US dollars per person, about 3 times the amount of grant dollars per person than the next highest state of Vermont.
+
+Finally, when we look at which states which represent the greatest *percentage* overall of NEH + matching award dollars, we note that New York comes in around 12%, nearly twice the amount of the next state with the highest share, which is California at roughly 6%.
+These figures suggest those states are taking a higher than average share of grant dollars given the amount of dollars spent per-person.
 
 # Limitations
 
@@ -375,7 +387,7 @@ percent_awards_excluded <-
   round(2)
 ```
 
-In the 2000s the NEH awarded \$`r total_awarded_to_all_us_territories` dollars, of which \$`r total_awarded_to_non_us_territories` dollars were excluded from this analysis.
+In the 2000s the NEH awarded `r scales::dollar(total_awarded_to_all_us_territories)` US dollars, of which `r scales::dollar(total_awarded_to_non_us_territories)` US dollars were excluded from this analysis.
 That exclusion represents about `r percent_awards_excluded` percent of NEH's total awards.
 While that percentage is small, those awards may have had a real impact on the residents of those regions.
 That potential impact isn't captured in this analysis.
@@ -390,7 +402,6 @@ Ultimately, because of our exclusion, we can't say with certainty what the NEH a
 
 # TODO
 
--   Set echo = False for most of the code chunks.
 -   Flesh out Analysis and Key Take-Away sections.
 -   Check code for lines that are too long
 -   Fix section 3.7 by removing the `pull()` calls.
