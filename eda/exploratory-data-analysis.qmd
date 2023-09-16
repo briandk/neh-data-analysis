@@ -35,7 +35,8 @@ There are three major findings:
 
 1.  The national average is `r scales::dollar(national_per_capita_award)` US dollars total awarded per person.
 2.  Washington, DC received `r scales::dollar(dc_per_capita_award)` dollars per person, the highest in the nation at 3 times the next highest state.
-3.  New York's percentage share of total dollars awarded leads at around 12%, with California at roughly 6%. This seems disproportionate given their per capita dollars awarded.
+3.  When we censor DC, we note that several states with low populations (e.g., Alaska and Wyoming) nevertheless have high awards dollars per-capita.
+4.  New York's percentage share of total dollars awarded leads at around 12%, with California at roughly 6%. This seems disproportionate given their per capita dollars awarded.
 
 # Loading and Cleaning the Data
 
@@ -48,10 +49,13 @@ suppressPackageStartupMessages(
     library(tidycensus) # to grab population data from the Census
     library(forcats) # to reorder data
     library(here) # to handle relative paths to files
-    library(tidyverse) # for data manipulation and visualization
+    library(dplyr) # for data manipulation
+    library(ggplot2) # for data visualization
+    library(knitr) # To use kable for pretty tables
     library(scales) # to format numbers
     library(vroom) # to quickly load data
     library(xml2) # to parse the downloaded XML data
+    library(usmap) # to plot quantities on a geographic US map
   }
 )
 
@@ -363,6 +367,61 @@ awards_per_capita_by_state |>
   theme_bw()
 ```
 
+```{r}
+n <- 
+  awards_per_capita_by_state |> 
+  select(per_capita_award) |> 
+  pull()
+
+us_regions <- 
+  awards_per_capita_by_state |> 
+  select() |> 
+  pull()
+
+per_capita_by_state <- tibble(
+  n = n,
+  state = us_regions
+)
+
+# plot_usmap(
+#   data = awards
+#   
+# )
+
+plot_usmap(
+  data = per_capita_by_state,
+  values = "n",
+  color = "blue"
+) +
+  scale_fill_continuous(low = "white", high = "blue", name = "Per Capita Award ($USD))") +
+  theme(legend.position = "right")
+
+```
+
+```{r}
+plot_usmap(
+  data = per_capita_by_state,
+  values = "n",
+  color = "blue",
+  include = .west_region
+) +
+  scale_fill_continuous(low = "white", high = "blue", name = "Per Capita Award ($USD)") +
+  theme(legend.position = "right")
+
+```
+
+```{r}
+state_abbrvs <-  intersect(names(census_states), .west_region)
+
+states <- census_states[state_abbrvs]
+
+per_capita_by_state |>
+  filter(state %in% states) |> 
+  mutate(dollars_per_capita = round(n, 2)) |>
+  select(state, dollars_per_capita) |> 
+  kable()
+```
+
 # Analysis and Interpretation
 
 ```{r echo=TRUE}
@@ -384,6 +443,10 @@ Could this be because DC has such a small population?
 That guess seems somewhat unlikely because we tried to correct for population with our per-person counts.
 Could it be that the number of awards in DC is simply greater than the number of awards in other states?
 One possible speculation is that DC has more museums and humanities venues per person than any other state/territory in the country.
+Another is unlike states, which can receive some grant funding through their state governments, DC isn't a state, so perhaps all its grant requests are federal and must through the NEH.
+
+When we explore geographic maps of per-capita funding, we see that almost all regions look low, and it's difficult to find where the high per-capita regions are.
+This difficulty is caused by DC being so high in per-capita award dollars and also so small in area.
 
 We note most states are tightly grouped around `r scales::dollar(national_per_capita_award)` US dollars per person.
 Low outliers are Florida and Texas at roughly `r scales::dollar(florida_per_capita_award)` dollars per person, while at the upper end Washington DC has roughly `r scales::dollar(dc_per_capita_award)` US dollars per person, about 3 times the amount of grant dollars per person than the next highest state of Vermont.
@@ -457,3 +520,4 @@ This analysis bundles matching and outright awards together into a single figure
 -   StackOverflow: Converting a State Name to State Abbreviation: [*https://stackoverflow.com/questions/5411979/state-name-to-abbreviation*](https://stackoverflow.com/questions/5411979/state-name-to-abbreviation){.uri}
 -   Analyzing US Census Data: Methods, Maps, and Models in R: [*https://walker-data.com/census-r/an-introduction-to-tidycensus.html?q=key#getting-started-with-tidycensus*](https://walker-data.com/census-r/an-introduction-to-tidycensus.html?q=key#getting-started-with-tidycensus){.uri}
 -   US Census API Key Request Form: [*http://api.census.gov/data/key_signup.html*](http://api.census.gov/data/key_signup.html){.uri}
+-   `usmap` package for cartographic representations of the United States
